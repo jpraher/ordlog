@@ -1,0 +1,66 @@
+
+# C-c'
+
+* http://orgmode.org/worg/org-contrib/babel/how-to-use-Org-Babel-for-R.html
+
+#+BEGIN_SRC c machine2.c :tangle yes
+  #include <stdio.h>
+  
+  typedef int word_t;
+  
+  /*
+   ,* context captures the state
+   ,*/
+  struct context {
+      int pc;
+      word_t * mem;
+  };
+  typedef struct context context_t;
+  
+  enum InstrKind {
+      INSTR_ARITH  = 0,
+      INSTR_TEST   = 1,
+      INSTR_CTRL   = 2,
+      INSTR_MEM    = 3
+  };
+  
+  enum ArithType {
+      ADD = 1,
+      SUB = 2,
+      MUL = 3,
+      DIV = 4
+  };
+  
+  union instruction {
+      struct {
+          word_t    kind: 2;
+          word_t    arith: 6;
+      };
+      struct {
+          word_t   kind: 2;
+          word_t   type: 6;
+      };
+      struct {
+          word_t   kind: 2;
+          word_t   type: 6;
+      };
+  };
+  
+  typedef union instruction instruction_t;
+  
+  int main() {
+      puts("test");
+  }
+  
+#+END_SRC
+
+#+BEGIN_SRC c machine2.c :tangle yes
+  
+  int f() {
+      return 1;
+  }
+  
+#+END_SRC
+
+
+

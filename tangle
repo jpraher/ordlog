@@ -1,0 +1,14 @@
+#!/usr/bin/env emacs --script
+
+;; (require 'package)
+;; (package-initialize)
+;; (require 'cl)
+
+(require 'org-install)
+(require 'org)
+(require 'ob-tangle)
+(require 'ob-c)
+
+(dolist (file command-line-args-left)
+  (princ file)
+  (org-babel-tangle-file file))
