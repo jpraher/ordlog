@@ -1,0 +1,151 @@
+
+#include <stdio.h>
+#include <assert.h>
+
+typedef unsigned int   word_t;
+typedef unsigned char  byte_t;
+
+enum InstrKind {
+    INSTR_ARITH  = 0,
+    INSTR_TEST   = 1,
+    INSTR_CTRL   = 2,
+    INSTR_MEM    = 3
+};
+
+enum ArithType {
+    ADD = 1,
+    SUB = 2,
+    MUL = 3,
+    DIV = 4
+};
+
+enum MemType {
+    LOAD = 1,
+    STORE = 2,
+    LOADI = 3    // load immediate
+};
+
+enum CtrlType {
+    HALT   = 1,
+    BRANCH = 2,
+    GOTO   = 3
+};
+
+#pragma pack(push, 1)
+union instruction {
+    struct {
+        word_t    kind  : 2;
+        word_t    rest  : 30;
+    };
+    struct {
+        word_t    kind  : 2;
+        word_t    arith : 6;
+        word_t    src1  : 8;
+        word_t    src2  : 8;
+        word_t    dest  : 8;
+    }  arith;
+    struct {
+        word_t   kind: 2;
+        word_t   type: 6;
+        word_t   reg : 8;
+    }  mem;
+    struct {
+        word_t   kind: 2;
+        word_t   type: 6;
+    }  ctrl ;
+    word_t word;
+};
+#pragma pack(pop)
+
+typedef union instruction instruction_t;
+
+#define REG_COUNT 32
+
+/*
+ ,* context captures the state
+ ,*/
+struct context {
+    int pc;
+    word_t * mem;
+    instruction_t * instrs;
+    int running;
+    word_t regs[REG_COUNT];
+};
+typedef struct context context_t;
+
+void run(context_t *ctx) {
+
+    while (ctx->running) {
+        int pc = ctx->pc++;
+        instruction_t ins = ctx->instrs[pc];
+        printf("Instruction kind %d\n", ins.kind);
+        switch(ins.kind) {
+        case INSTR_CTRL:
+            switch (ins.ctrl.type) {
+            case HALT:
+                printf("Halting now.\n");
+                ctx->running  = 0;
+                break;
+            };
+            break;
+
+        case INSTR_ARITH:
+            switch(ins.mem.type) {
+
+            };
+            break;
+        case INSTR_MEM:
+            switch(ins.mem.type) {
+
+            case STORE:
+                {
+                    word_t *addr = ((word_t*)(ctx->instrs[ctx->pc].word));
+                    ctx->pc++;
+                    *addr = ctx->regs[ins.mem.reg];
+                    //printf("STOREed reg %d to address %08x\n", ins.mem.reg, addr);
+                }
+                break;
+            case LOAD:
+            case LOADI:
+                {
+                    word_t *addr = ((word_t*)(ctx->instrs[ctx->pc].word));
+                    ctx->pc++;
+                    ctx->regs[ins.mem.reg] = (ins.mem.type == LOADI) ? (word_t)addr : *addr;
+                    printf("LOADed reg %d to value %d\n", ins.mem.reg, ctx->regs[ins.mem.reg]);
+                }
+                break;
+            }
+            break;
+        default:
+            printf("*** Unknown instruction %d ***\n", ins);
+        }
+    }
+}
+
+int main() {
+
+    const int bytes_word  = sizeof(word_t);
+    const int bytes_instr = sizeof(instruction_t);
+    printf("sizeof word %d, sizeof instruction  %d\n", bytes_word, bytes_instr);
+    assert(bytes_word == bytes_instr);
+
+    word_t mem[512];
+    instruction_t instrs[256];
+    instrs[0].kind = INSTR_MEM;
+    instrs[0].mem.type = LOADI;
+    instrs[0].mem.reg  = 0;
+    instrs[1].word = 27;
+    instrs[2].kind = INSTR_CTRL;
+    instrs[2].ctrl.type = HALT;
+
+    context_t ctx;
+    ctx.pc  = 0;
+    ctx.mem = (word_t*)mem;
+    ctx.instrs =  (instruction_t*)instrs;
+    ctx.running = 1;
+    run(&ctx);
+}
+
+int f() {
+    return 1;
+}
