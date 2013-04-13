@@ -6,16 +6,7 @@
 #+BEGIN_SRC c machine2.c :tangle yes
   #include <stdio.h>
   
-  typedef int word_t;
-  
-  /*
-   ,* context captures the state
-   ,*/
-  struct context {
-      int pc;
-      word_t * mem;
-  };
-  typedef struct context context_t;
+  typedef unsigned int word_t;
   
   enum InstrKind {
       INSTR_ARITH  = 0,
@@ -31,25 +22,87 @@
       DIV = 4
   };
   
+  enum MemType {
+      LOAD = 1,
+      STORE = 2
+  };
+  
+  enum CtrlType {
+      HALT   = 1,
+      BRANCH = 2,
+      GOTO   = 3
+  };
+  
   union instruction {
       struct {
-          word_t    kind: 2;
-          word_t    arith: 6;
+          word_t    kind  : 2;
+          word_t    rest  : 32;
       };
+      struct {
+          word_t    kind  : 2;
+          word_t    arith : 6;
+          word_t    src1  : 8;
+          word_t    src2  : 8;
+          word_t    dest  : 8;
+      }  arith;
       struct {
           word_t   kind: 2;
           word_t   type: 6;
-      };
+      }  mem;
       struct {
           word_t   kind: 2;
           word_t   type: 6;
-      };
+      }  ctrl ;
   };
   
   typedef union instruction instruction_t;
   
+  /*
+   ,* context captures the state
+   ,*/
+  struct context {
+      int pc;
+      word_t * mem;
+      instruction_t * instrs;
+      int running;
+  };
+  typedef struct context context_t;
+  
+  void run(context_t *ctx) {
+      
+      while (ctx->running) {
+          int pc = ctx->pc++;
+          instruction_t ins = ctx->instrs[pc];
+          printf("Instruction kind %d\n", ins.kind);
+          switch(ins.kind) {
+          case INSTR_CTRL:
+              switch (ins.ctrl.type) {
+              case HALT:
+                  printf("Halting now.\n");
+                  ctx->running  = 0;
+                  break;
+              };
+              break;
+          default:
+              printf("*** Unknown instruction %d ***\n", ins);
+          }
+      }
+  }
+  
   int main() {
-      puts("test");
+      word_t mem[512];
+      instruction_t instrs[256];
+      instrs[0].kind = INSTR_MEM;
+      instrs[0].mem.type = STORE;
+      instrs[1].kind = INSTR_CTRL;
+      instrs[1].ctrl.type = HALT;
+  
+      context_t ctx;
+      ctx.pc  = 0;
+      ctx.mem = (word_t*)mem;
+      ctx.instrs =  (instruction_t*)instrs;
+      ctx.running = 1;
+      run(&ctx);
   }
   
 #+END_SRC
