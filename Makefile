@@ -1,5 +1,8 @@
-machine: machine.org
-	emacs --batch --file machine.org --eval "(org-babel-tangle)"
+
+# machine.c: machine.org
+#	emacs --batch --file machine.org --eval "(org-babel-tangle)"
+
+machine: machine.c
 	gcc -o machine machine.c
 
 machine.html: machine.org
