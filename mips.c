@@ -60,7 +60,7 @@ typedef union instr instr_t;
     | (f & B6))
 
 #define I(opcode,s,t,imm)   ((opcode & B6) << (32-6)) | ((s & B5) << (32-11)) | ((t & B5) << (32-16)) | (imm & B16)
-#define J(opcode,target)    ((opcode & B6) << (32-7)) | (target & B26)
+#define J(opcode,target)    ((opcode & B6) << (32-6)) | (target & B26)
 
 inline word_t opcode(word_t w) { return w >> 26; }
 inline word_t r_rs(word_t w) { return (w >> 21) & B5; }
@@ -68,10 +68,12 @@ inline word_t r_rt(word_t w) { return (w >> 16) & B5; }
 inline word_t r_rd(word_t w) { return (w >> 11) & B5; }
 inline word_t r_shamt(word_t w) { return (w >> 6) & B5; }
 inline word_t r_funct(word_t w) { return w & B6; }
+inline word_t j_target(word_t w) { return w & B26; }
 
 /*
   define and match on the types...
  */
+#define HALT()          R(0x0u,0,0,0,0x0u,0x0cu)
 #define ADD(s,t,d)      R(0x0u,s,t,d,0x0u,0x20u)
 #define ADDI(s,t,imm)   I(0x8u,s,t,imm)
 #define ADDIU(s,t,imm)  I(0x9u,s,t,imm)
@@ -85,10 +87,14 @@ inline word_t r_funct(word_t w) { return w & B6; }
 #define JR(s)           R(0x0u,s,0x0u,0x0u,0x0u,0x8u)
 #define LBU(s,t,imm)    I(0x24u,s,t,imm)
 
+#define M_HALT          HALT(0,0,0)
 #define M_ADD           ADD(0,0,0)
 #define M_ADDI          ADDI(0,0,0)
 #define M_ADDIU         ADDIU(0,0,0)
 #define M_ADDU          ADDU(0,0,0)
+#define M_AND           AND(0,0,0)
+#define M_ANDI          ANDI(0,0,0)
+
 
 #define R_MASK          0xfc00003fu // (((word_t)B6) << 26 | B6)
 #define J_MASK          0xfc000000u // (B6 << 26)
@@ -105,14 +111,82 @@ void r_print(word_t w2) {
 	   r_funct(w2));
 }
 
+
+struct context {
+    word_t pc;
+    dword_t regs[32];
+    
+};
+typedef struct context context_t;
+
 // #define IS_R(opcode) 
+void eval(context_t * ctx, word_t instr) {
+    byte_t opc = opcode(instr);
+    switch(opc) {
+    // R
+    case 0:
+    case 10:
+    {
+	dword_t * regs = ctx->regs;
+	byte_t rs = r_rs(instr);
+	byte_t rt = r_rt(instr);
+	byte_t rd = r_rd(instr);
+	word_t instr_m = (R_MASK & instr);
+	switch (instr_m) {
+	case M_ADD:
+	    regs[rd] = regs[rs] + regs[rt];
+	case M_AND:
+	    regs[rd] = regs[rs] & regs[rt];
+	default:
+	    break;
+	}
+    }
+    break;
+    // J
+    case 2: // J
+    {
+	word_t target = j_target(instr);
+	ctx->pc = target;
+	break;
+    }
+    case 3: // JAL
+    {
+	word_t target = j_target(instr);
+	ctx->regs[31] = ctx->pc + 8;
+	ctx->pc = target;
+	break;
+    }
+    break;
+    default:
+    
+    }
+}
+
+
+
+void run(context_t * ctx) {
+    while (ctx->running) {
+	word_t instr = *((word_t*)&(ctx->mem[ctx->pc]));
+	pc += 4;
+    }
+}
+
+/* 
+   overall goal?
+   - logic connectives and state
+   - think about representation
+   
+ */	 
+
 
 int main(int argc, const char ** argv) {
 
     word_t instrs[] = {
-	ADD(0,1,2)
+	ADD(0,1,2),
+	HALT()
+	
     };
-
+    /*
     word_t t = instrs[0] & R_MASK;
     instrr_t r = *((instrr_t*)&t);
     word_t m = M_ADD;
@@ -123,7 +197,6 @@ int main(int argc, const char ** argv) {
     r_print(w2);
     r_print(w3);
     r_print(w4);
-        
     printf("instr %08x\n", t&B6);
     printf("mask  %08x\n", M_ADD);
     printf("test  %08x\n", (w4 & R_MASK));
@@ -134,6 +207,7 @@ int main(int argc, const char ** argv) {
     printf("xx %08x\n", 0x20 & 0x3f);
     printf("instr %08x\n", w4);
     printf("instr %08x\n", r_funct(w3));
+    */
     switch (instrs[0] & R_MASK) {
     case M_ADD:
 	// add instruction
@@ -148,6 +222,9 @@ int main(int argc, const char ** argv) {
 	printf("**unknown**\n");
 	break;
     }
+
+
+    
 
     return 0;
 }
